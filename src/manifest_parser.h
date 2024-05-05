@@ -17,8 +17,11 @@
 
 #include "parser.h"
 
+#include <vector>
+
 struct BindingEnv;
 struct EvalString;
+struct Rule;
 
 enum DupeEdgeAction {
   kDupeEdgeActionWarn,
@@ -63,6 +66,14 @@ private:
   BindingEnv* env_;
   ManifestParserOptions options_;
   bool quiet_;
+
+  void FooAddVar(const std::string& name, const EvalString& value);
+
+  bool FooAddEdge(std::string* err, std::vector<EvalString>& ins,
+                  const std::vector<EvalString>& outs,
+                  std::vector<EvalString>& validations, int implicit_outs,
+                  const Rule* rule, int implicit, int order_only,
+                  BindingEnv* env);
 };
 
 #endif  // NINJA_MANIFEST_PARSER_H_

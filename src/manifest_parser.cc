@@ -63,12 +63,7 @@ bool ManifestParser::Parse(const string& filename, const string& input,
       EvalString let_value;
       if (!ParseLet(&name, &let_value, err))
         return false;
-      string value = let_value.Evaluate(env_);
-      // Check ninja_required_version immediately so we can exit
-      // before encountering any syntactic surprises.
-      if (name == "ninja_required_version")
-        CheckNinjaVersion(value);
-      env_->AddBinding(name, value);
+      FooAddVar(name, let_value);
       break;
     }
     case Lexer::INCLUDE:
@@ -93,7 +88,14 @@ bool ManifestParser::Parse(const string& filename, const string& input,
   }
   return false;  // not reached
 }
-
+void ManifestParser::FooAddVar(const string& name, const EvalString& let_value) {
+  string value = let_value.Evaluate(env_);
+  // Check ninja_required_version immediately so we can exit
+  // before encountering any syntactic surprises.
+  if (name == "ninja_required_version")
+    CheckNinjaVersion(value);
+  env_->AddBinding(name, value);
+}
 
 bool ManifestParser::ParsePool(string* err) {
   string name;
@@ -318,6 +320,15 @@ bool ManifestParser::ParseEdge(string* err) {
     has_indent_token = lexer_.PeekToken(Lexer::INDENT);
   }
 
+  return FooAddEdge(err, ins, outs, validations, implicit_outs, rule, implicit,
+                    order_only, env);
+}
+
+bool ManifestParser::FooAddEdge(std::string* err, std::vector<EvalString>& ins,
+                const std::vector<EvalString>& outs,
+                std::vector<EvalString>& validations, int implicit_outs,
+                const Rule* rule, int implicit, int order_only,
+                BindingEnv* env) {
   Edge* edge = state_->AddEdge(rule);
   edge->env_ = env;
 
@@ -337,7 +348,7 @@ bool ManifestParser::ParseEdge(string* err) {
     uint64_t slash_bits;
     CanonicalizePath(&path, &slash_bits);
     if (!state_->AddOut(edge, path, slash_bits, err)) {
-      lexer_.Error(std::string(*err), err);
+      lexer_.Error(string(*err), err);
       return false;
     }
   }
@@ -364,7 +375,7 @@ bool ManifestParser::ParseEdge(string* err) {
   edge->order_only_deps_ = order_only;
 
   edge->validations_.reserve(validations.size());
-  for (std::vector<EvalString>::iterator v = validations.begin();
+  for (vector<EvalString>::iterator v = validations.begin();
       v != validations.end(); ++v) {
     string path = v->Evaluate(env);
     if (path.empty())
@@ -403,7 +414,7 @@ bool ManifestParser::ParseEdge(string* err) {
     edge->dyndep_ = state_->GetNode(dyndep, slash_bits);
     edge->dyndep_->set_dyndep_pending(true);
     vector<Node*>::iterator dgi =
-      std::find(edge->inputs_.begin(), edge->inputs_.end(), edge->dyndep_);
+      find(edge->inputs_.begin(), edge->inputs_.end(), edge->dyndep_);
     if (dgi == edge->inputs_.end()) {
       return lexer_.Error("dyndep '" + dyndep + "' is not an input", err);
     }
